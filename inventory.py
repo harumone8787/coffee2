@@ -2,7 +2,7 @@
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from sqlalchemy import func, case
+from sqlalchemy import func, case, text
 from sqlalchemy.orm import selectinload
 
 from extensions import db
@@ -10,13 +10,20 @@ from models import User, Product, Movement
 
 inventory_bp = Blueprint("inventory", __name__)
 
-# --- Postgres では列点検は何もしない（SQLite 専用の PRAGMA は使わない） ---
+# --- Postgres/SQLite どちらでも安全に起動できるように、ここでは no-op または将来拡張用 ---
 def ensure_columns(db_):
     """
-    以前は SQLite の PRAGMA を使ってカラム確認していましたが、
-    本番は Postgres のため、ここでは何もしません。（安全のため no-op）
+    本番は Postgres 想定。マイグレーション未導入のため、必要になれば
+    ALTER TABLE をここで行う。現状は新規作成想定なので no-op。
     """
+    # 例：古いスキーマからの移行が必要になったら下記のように追加
+    # with db_.engine.begin() as conn:
+    #     try:
+    #         conn.execute(text("SELECT movement_type FROM movement LIMIT 1"))
+    #     except Exception:
+    #         conn.execute(text("ALTER TABLE movement ADD COLUMN movement_type VARCHAR(8) NOT NULL DEFAULT 'in'"))
     return
+
 
 # デフォルト管理者を作成
 def ensure_admin(app):
@@ -27,6 +34,8 @@ def ensure_admin(app):
             db.session.add(u)
             db.session.commit()
             app.logger.info("[INIT] created default admin")
+        else:
+            app.logger.info("[INIT] admin already exists")
 
 
 # ====== ページ ======
@@ -43,6 +52,7 @@ def dashboard():
     products = product_query.order_by(Product.name.asc()).all()
 
     # 在庫数 = 入庫 - 出庫（Movement 集計）
+    # quantity は常に正の数、movement_type が 'in' なら +、'out' なら - として集計
     agg = (
         db.session.query(
             Product.id.label("pid"),
@@ -84,6 +94,7 @@ def dashboard():
 
 
 # ========== 商品 ==========
+
 @inventory_bp.route("/products", methods=["GET", "POST"])
 @login_required
 def products():
@@ -97,14 +108,14 @@ def products():
         min_stock = request.form.get("min_stock", "").strip()
         supplier = request.form.get("supplier", "").strip()
 
-        if not name:
-            flash("商品名は必須です。", "danger")
+        if not name or not unit:
+            flash("商品名と単位は必須です。", "danger")
         else:
             try:
                 p = Product(
                     name=name,
-                    unit=unit or None,
-                    min_stock=int(min_stock) if min_stock else None,
+                    unit=unit,
+                    min_stock=int(min_stock) if min_stock else 0,
                     supplier=supplier or None,
                     created_at=datetime.utcnow(),
                 )
@@ -136,9 +147,11 @@ def product_edit(pid):
         supplier = request.form.get("supplier", "").strip()
 
         try:
-            p.name = name or p.name
-            p.unit = unit or None
-            p.min_stock = int(min_stock) if min_stock else None
+            if name:
+                p.name = name
+            if unit:
+                p.unit = unit
+            p.min_stock = int(min_stock) if min_stock else p.min_stock
             p.supplier = supplier or None
             db.session.commit()
             flash("商品情報を更新しました。", "success")
@@ -169,6 +182,7 @@ def product_delete(pid):
 
 
 # ========== 入出庫 ==========
+
 @inventory_bp.route("/movements", methods=["GET", "POST"])
 @login_required
 def movements():
@@ -176,16 +190,26 @@ def movements():
         product_id = request.form.get("product_id")
         movement_type = request.form.get("movement_type")  # 'in' or 'out'
         quantity = request.form.get("quantity")
+        note = request.form.get("note", "").strip()
 
         if not product_id or not movement_type or not quantity:
             flash("必要項目が不足しています。", "danger")
             return redirect(url_for("inventory.movements"))
 
+        if movement_type not in ("in", "out"):
+            flash("区分は 'in' または 'out' を指定してください。", "danger")
+            return redirect(url_for("inventory.movements"))
+
         try:
+            qty = int(quantity)
+            if qty <= 0:
+                raise ValueError("数量は正の整数で入力してください。")
+
             mv = Movement(
                 product_id=int(product_id),
                 movement_type=movement_type,
-                quantity=int(quantity),
+                quantity=qty,
+                note=note or None,
                 user_id=current_user.id,
                 created_at=datetime.utcnow(),
             )
@@ -212,6 +236,7 @@ def movements():
 
 
 # ========== スタッフ管理 ==========
+
 @inventory_bp.route("/admin/users")
 @login_required
 def admin_users():

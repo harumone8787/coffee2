@@ -2,7 +2,9 @@
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+from sqlalchemy import CheckConstraint
 from extensions import db, login_manager
+
 
 class User(UserMixin, db.Model):
     __tablename__ = "user"
@@ -22,9 +24,6 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password: str) -> bool:
         return check_password_hash(self.password_hash, password)
-
-    # Flask-Login が参照するプロパティ（UserMixin でデフォルト実装あり）
-    # def get_id(self): return str(self.id)
 
 
 @login_manager.user_loader
@@ -52,6 +51,8 @@ class Product(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
+    movements = db.relationship("Movement", backref="product", lazy=True)
+
 
 class Movement(db.Model):
     __tablename__ = "movement"
@@ -60,11 +61,15 @@ class Movement(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
-    qty = db.Column(db.Integer, nullable=False)  # 入庫は+、出庫は- を保存
-    kind = db.Column(db.String(8), nullable=False)  # 'IN' or 'OUT'
+    # 在庫ロジックとビューで使用する正規化済みカラム
+    quantity = db.Column(db.Integer, nullable=False)            # 入庫は +、出庫は - にしない。集計時に符号処理
+    movement_type = db.Column(db.String(8), nullable=False, default="in")  # "in" or "out"
     note = db.Column(db.String(255))
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
-    product = db.relationship("Product", backref="movements")
     user = db.relationship("User", backref="movements")
+
+    __table_args__ = (
+        CheckConstraint("movement_type IN ('in','out')", name="movement_type_valid"),
+    )
