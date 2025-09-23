@@ -3,12 +3,13 @@
   --card: #121833;
   --text: #e5e7eb;
   --muted: #9ca3af;
-  --accent: #3b82f6;    /* 青：主要アクション */
-  --secondary: #f59e0b; /* オレンジ：補助導線 */
-  --danger: #ef4444;    /* 赤：注意/削除 */
+  --accent: #3b82f6;    /* 青（検索ボタン用） */
+  --secondary: #f59e0b; /* オレンジ（在庫一覧の主要ボタン用） */
+  --danger: #ef4444;    /* 赤 */
   --ok: #10b981;        /* 緑 */
   --border: #1f2a4d;
 }
+
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
@@ -65,11 +66,7 @@ h1, h2 { margin: 8px 0 12px; }
 .button {
   background: var(--secondary); color: white; border: none; padding: 10px 14px;
   border-radius: 10px; cursor: pointer; font-weight: 600; display:inline-block;
-  transition: transform .02s ease, filter .2s ease;
 }
-.button:hover { filter: brightness(1.05); }
-.button:active { transform: translateY(1px); }
-
 .button-accent {
   background: var(--accent);
   color: white;
@@ -78,12 +75,7 @@ h1, h2 { margin: 8px 0 12px; }
   border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
-  box-shadow: 0 8px 18px rgba(59,130,246,0.25);
-  transition: transform .05s ease, filter .2s ease, box-shadow .2s ease;
 }
-.button-accent:hover { filter: brightness(1.06); box-shadow: 0 10px 22px rgba(59,130,246,0.35); }
-.button-accent:active { transform: translateY(1px); }
-
 .button-secondary {
   background: var(--secondary);
   color: white;
@@ -92,27 +84,7 @@ h1, h2 { margin: 8px 0 12px; }
   border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
-  box-shadow: 0 8px 18px rgba(245,158,11,0.25);
-  transition: transform .05s ease, filter .2s ease, box-shadow .2s ease;
 }
-.button-secondary:hover { filter: brightness(1.06); box-shadow: 0 10px 22px rgba(245,158,11,0.35); }
-.button-secondary:active { transform: translateY(1px); }
-
-/* ★ 追加：危険操作ボタン（削除など） */
-.button-danger {
-  background: var(--danger);
-  color: white;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 700;
-  box-shadow: 0 8px 18px rgba(239,68,68,0.25);
-  transition: transform .05s ease, filter .2s ease, box-shadow .2s ease;
-}
-.button-danger:hover { filter: brightness(1.06); box-shadow: 0 10px 22px rgba(239,68,68,0.35); }
-.button-danger:active { transform: translateY(1px); }
-
 .form, .grid-form {
   background: var(--card); padding: 16px; border-radius: 12px; border: 1px solid var(--border);
   display: grid; gap: 12px;
@@ -135,18 +107,15 @@ h1, h2 { margin: 8px 0 12px; }
 .table thead { background: #0f1733; }
 .text-red { color: var(--danger); font-weight: 700; }
 tr.low { background: rgba(239, 68, 68, 0.08); }
+.cell-name { max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ===== Icons (SVG) ===== */
-.icon { display: inline-flex; width: 1.1em; height: 1.1em; vertical-align: -0.15em; }
-.icon svg { width: 1em; height: 1em; fill: currentColor; }
+/* Icon colors */
+.icon-in { color: var(--ok); font-weight: bold; }        /* 入庫＝緑 */
+.icon-out { color: var(--danger); font-weight: bold; }   /* 出庫＝赤 */
 
-/* 区分 */
-.icon-in  { color: var(--ok); font-weight: 700; }     /* 入庫＝緑 */
-.icon-out { color: var(--danger); font-weight: 700; } /* 出庫＝赤 */
-
-/* 役割（管理者/スタッフ） */
-.icon-admin { color: #eab308; font-weight: 700; }     /* 管理者＝黄 */
-.icon-staff { color: #3b82f6; font-weight: 700; }     /* スタッフ＝青 */
+/* 管理者とスタッフ */
+.icon-admin { color: #eab308; font-weight: bold; }  /* 管理者＝黄色 */
+.icon-staff { color: #3b82f6; font-weight: bold; }  /* スタッフ＝青 */
 
 /* Badges */
 .badge {
@@ -157,17 +126,6 @@ tr.low { background: rgba(239, 68, 68, 0.08); }
 .badge-gray { background: rgba(156,163,175,0.15); color: #e5e7eb; border: 1px solid rgba(156,163,175,0.35); }
 .badge-red { background: rgba(239,68,68,0.15); color: #fecaca; border: 1px solid rgba(239,68,68,0.35); }
 
-/* Auth pages */
-.auth-wrap { display:flex; justify-content:center; }
-.auth-card {
-  width: min(520px, 100%);
-  background: linear-gradient(180deg, #121833, #0f1733);
-  padding: 24px; border-radius: 16px; border: 1px solid var(--border);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.35);
-}
-.auth-card h1 { margin: 0 0 14px; }
-.auth-actions { display:flex; gap: 10px; flex-wrap: wrap; align-items:center; }
-
 /* Flash */
 .flashes { list-style:none; padding:0; margin: 0 0 12px 0; }
 .flash { padding:10px 12px; border-radius: 8px; margin-bottom: 8px; }
@@ -176,20 +134,65 @@ tr.low { background: rgba(239, 68, 68, 0.08); }
 .flash.warning { background: #4d3b0b; }
 .flash.danger { background: #4d0b0b; }
 
+/* === 最新履歴：モバイルカードUI === */
+.history-cards { display:none; }
+.only-desktop { display:block; }
+.only-mobile { display:none; }
+
+.history-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+.history-row {
+  display:flex; align-items:center; justify-content: space-between;
+  gap: 8px; padding: 6px 0;
+}
+.history-row.top { padding-top: 2px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); margin-bottom: 6px; }
+.history-row .label {
+  font-size: 12px; color: var(--muted); min-width: 56px;
+}
+.history-row .value { font-size: 15px; }
+.value-strong { font-weight: 700; font-size: 16px; }
+.qty { font-weight: 800; letter-spacing: 0.2px; }
+.qty-in { color: var(--ok); }
+.qty-out { color: var(--danger); }
+.unit.muted { color: var(--muted); margin-left: 6px; }
+.who { margin-left: 6px; }
+.pill {
+  display:inline-block; font-weight: 800; padding: 4px 10px; border-radius: 999px; font-size: 12px;
+  border: 1px solid transparent;
+}
+.pill-in { background: rgba(16,185,129,0.17); color: #6ee7b7; border-color: rgba(16,185,129,0.35); }
+.pill-out { background: rgba(239,68,68,0.17); color: #fecaca; border-color: rgba(239,68,68,0.35); }
+.history-row .time { color: var(--muted); font-size: 12px; }
+
 /* Responsive */
 @media (max-width: 900px) {
   .nav-desktop { display:none; }
   .hamburger { display:block; }
 }
+
 @media (max-width: 780px) {
   .grid-form { grid-template-columns: 1fr; }
   .grid-form .full { grid-column: 1; }
   .table th, .table td { padding: 10px 8px; }
   .brand { font-size: 16px; }
   .navbtn { padding: 8px 10px; }
-  .button, .button-accent, .button-secondary, .button-danger { padding: 9px 12px; }
+  .button, .button-accent, .button-secondary { padding: 9px 12px; }
   .cell-name { max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+
+@media (max-width: 640px) {
+  /* スマホ：履歴はカードUIに切替 */
+  .only-desktop { display:none; }
+  .only-mobile { display:block; }
+  .history-cards { display:block; }
+}
+
 @media (max-width: 420px) {
   .hello { display:none; }
 }
