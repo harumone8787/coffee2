@@ -1,131 +1,109 @@
 {% extends 'base.html' %}
-{% block title %}在庫一覧{% endblock %}
+{% block title %}在庫一覧 - 在庫管理{% endblock %}
 {% block content %}
+<h1>在庫一覧</h1>
 
-<div class="container">
-
-  <h1>在庫一覧</h1>
-
-  <!-- ツールバー（検索・ボタン類は既存のまま） -->
-  <div class="toolbar">
-    <a class="button-secondary" href="{{ url_for('inventory.products') }}">商品登録/一覧</a>
-    <a class="button" href="{{ url_for('inventory.movements') }}">入出庫</a>
+<!-- 検索・フィルタ（GET） -->
+<form method="get" class="grid-form filter-form">
+  <div>
+    <label>🔎 商品検索（商品名 / 仕入れ先）</label>
+    <input name="q" value="{{ q or '' }}" placeholder="例: バラ / 卸A">
   </div>
+  <div>
+    <label>🧭 履歴の区分</label>
+    <select name="kind">
+      <option value="" {% if not kind %}selected{% endif %}>すべて</option>
+      <option value="IN" {% if kind == 'IN' %}selected{% endif %}>入庫</option>
+      <option value="OUT" {% if kind == 'OUT' %}selected{% endif %}>出庫</option>
+    </select>
+  </div>
+  <div>
+    <label>📦 履歴の商品</label>
+    <select name="prod">
+      <option value="">すべて</option>
+      {% for fp in filter_products %}
+        <option value="{{ fp.id }}" {% if prod_selected == fp.id %}selected{% endif %}>{{ fp.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="full">
+    <button type="submit" class="button-accent">この条件で表示</button>
+    <a class="button-accent" href="{{ url_for('inventory.dashboard') }}" style="margin-left:8px;">条件クリア</a>
+  </div>
+</form>
 
-  <!-- 在庫テーブル（既存） -->
-  <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>商品名</th>
-          <th>在庫</th>
-          <th>最低在庫</th>
-          <th>単位</th>
-          <th>仕入れ先</th>
+<div class="toolbar">
+  <a class="button-secondary" href="{{ url_for('inventory.products') }}">🧾 商品登録/一覧</a>
+  <a class="button-secondary" href="{{ url_for('inventory.movements') }}">🔁 入出庫（消費登録）</a>
+</div>
+
+<div class="table-responsive">
+  <table class="table">
+    <thead>
+      <tr><th>商品名</th><th>在庫</th><th>単位</th><th>最低在庫数</th><th>仕入れ先</th></tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+        {% set low = p.current_stock < p.min_stock %}
+        <tr class="{{ 'low' if low else '' }}">
+          <td class="cell-name">📦 {{ p.name }}</td>
+          <td class="cell-stock {{ 'text-red' if low else '' }}">{{ p.current_stock }}</td>
+          <td class="cell-unit">{{ p.unit }}</td>
+          <td class="cell-min">{{ p.min_stock }}</td>
+          <td class="cell-supplier">{{ p.supplier or '-' }}</td>
         </tr>
-      </thead>
-      <tbody>
-        {% for p in products %}
-          <tr class="{% if p.quantity is not none and p.min_stock is not none and p.quantity < p.min_stock %}low{% endif %}">
-            <td class="cell-name">{{ p.name }}</td>
-            <td class="{% if p.quantity is not none and p.min_stock is not none and p.quantity < p.min_stock %}text-red{% endif %}">{{ p.quantity }}</td>
-            <td>{{ p.min_stock }}</td>
-            <td>{{ p.unit }}</td>
-            <td>{{ p.supplier }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+      {% endfor %}
+      {% if not products %}
+        <tr><td colspan="5" style="color:var(--muted)">該当する商品がありません。</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
 
-  <h2 class="mt-3">最新の履歴（10件）</h2>
-
-  <!-- デスクトップ用：表（従来どおり） -->
-  <div class="table-responsive only-desktop">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>日時</th>
-          <th>商品</th>
-          <th>区分</th>
-          <th>数量</th>
-          <th>担当</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for m in recent_movements %}
-          <tr>
-            <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at else '' }}</td>
-            <td class="cell-name">{{ m.product.name if m.product else '' }}</td>
-            <td>
-              {% if m.movement_type == 'in' %}
-                <span class="icon-in">⬆ 入庫</span>
-              {% else %}
-                <span class="icon-out">⬇ 出庫</span>
-              {% endif %}
-            </td>
-            <td>{{ m.quantity }}</td>
-            <td>
-              {% set who = (m.user.username if m.user else '—') %}
-              {% if m.user and m.user.is_admin %}
-                <span class="icon-admin">👤</span> {{ who }}
-              {% else %}
-                <span class="icon-staff">👤</span> {{ who }}
-              {% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- モバイル用：カードリスト -->
-  <div class="history-cards only-mobile">
-    {% for m in recent_movements %}
-      <article class="history-card">
-        <div class="history-row top">
-          <div class="left">
-            <div class="pill {% if m.movement_type == 'in' %}pill-in{% else %}pill-out{% endif %}">
-              {% if m.movement_type == 'in' %}⬆ 入庫{% else %}⬇ 出庫{% endif %}
-            </div>
-          </div>
-          <div class="right time">
-            {{ m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at else '' }}
-          </div>
-        </div>
-
-        <div class="history-row">
-          <div class="label">商品</div>
-          <div class="value value-strong">{{ m.product.name if m.product else '' }}</div>
-        </div>
-
-        <div class="history-row">
-          <div class="label">数量</div>
-          <div class="value">
-            <span class="qty {% if m.movement_type == 'in' %}qty-in{% else %}qty-out{% endif %}">
-              {{ m.quantity }}
+<h2 class="mt-3">🕒 最新の履歴（10件）</h2>
+<div class="table-responsive">
+  <table class="table">
+    <thead>
+      <tr><th>日時</th><th>商品</th><th>区分</th><th>数量</th><th>担当</th><th>メモ</th></tr>
+    </thead>
+    <tbody>
+      {% for m in recent10 %}
+      <tr>
+        <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>📦 {{ m.product.name }}</td>
+        <td>
+          {% if m.kind == 'IN' %}
+            <span class="icon icon-in">⬆️ 入庫</span>
+          {% else %}
+            <span class="icon icon-out">⬇️ 出庫</span>
+          {% endif %}
+        </td>
+        <td>{{ m.qty }}</td>
+        <td>
+          {% if m.user.is_admin %}
+            <span class="icon icon-admin" title="管理者">
+              <!-- user-circle (SVG) -->
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 14a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"/>
+              </svg>
             </span>
-            <span class="unit muted">
-              {% if m.product and m.product.unit %}{{ m.product.unit }}{% endif %}
+            <span style="margin-left:6px">{{ m.user.username }}</span>
+          {% else %}
+            <span class="icon icon-staff" title="スタッフ">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 14a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"/>
+              </svg>
             </span>
-          </div>
-        </div>
-
-        <div class="history-row">
-          <div class="label">担当</div>
-          <div class="value">
-            {% set who = (m.user.username if m.user else '—') %}
-            {% if m.user and m.user.is_admin %}
-              <span class="icon-admin">👤</span>
-            {% else %}
-              <span class="icon-staff">👤</span>
-            {% endif %}
-            <span class="who">{{ who }}</span>
-          </div>
-        </div>
-      </article>
-    {% endfor %}
-  </div>
-
+            <span style="margin-left:6px">{{ m.user.username }}</span>
+          {% endif %}
+        </td>
+        <td>{{ m.note or '' }}</td>
+      </tr>
+      {% endfor %}
+      {% if not recent10 %}
+        <tr><td colspan="6" style="color:var(--muted)">履歴がありません。</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}
