@@ -3,9 +3,9 @@
   --card: #121833;
   --text: #e5e7eb;
   --muted: #9ca3af;
-  --accent: #3b82f6;    /* 青：主要アクション */
-  --secondary: #f59e0b; /* オレンジ：補助導線 */
-  --danger: #ef4444;    /* 赤：注意/削除 */
+  --accent: #3b82f6;    /* 青：検索ボタン/主要アクション */
+  --secondary: #f59e0b; /* オレンジ：在庫一覧の導線 */
+  --danger: #ef4444;    /* 赤 */
   --ok: #10b981;        /* 緑 */
   --border: #1f2a4d;
 }
@@ -69,7 +69,6 @@ h1, h2 { margin: 8px 0 12px; }
 }
 .button:hover { filter: brightness(1.05); }
 .button:active { transform: translateY(1px); }
-
 .button-accent {
   background: var(--accent);
   color: white;
@@ -97,21 +96,6 @@ h1, h2 { margin: 8px 0 12px; }
 }
 .button-secondary:hover { filter: brightness(1.06); box-shadow: 0 10px 22px rgba(245,158,11,0.35); }
 .button-secondary:active { transform: translateY(1px); }
-
-/* ★ 追加：危険操作ボタン（削除など） */
-.button-danger {
-  background: var(--danger);
-  color: white;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 700;
-  box-shadow: 0 8px 18px rgba(239,68,68,0.25);
-  transition: transform .05s ease, filter .2s ease, box-shadow .2s ease;
-}
-.button-danger:hover { filter: brightness(1.06); box-shadow: 0 10px 22px rgba(239,68,68,0.35); }
-.button-danger:active { transform: translateY(1px); }
 
 .form, .grid-form {
   background: var(--card); padding: 16px; border-radius: 12px; border: 1px solid var(--border);
@@ -187,7 +171,7 @@ tr.low { background: rgba(239, 68, 68, 0.08); }
   .table th, .table td { padding: 10px 8px; }
   .brand { font-size: 16px; }
   .navbtn { padding: 8px 10px; }
-  .button, .button-accent, .button-secondary, .button-danger { padding: 9px 12px; }
+  .button, .button-accent, .button-secondary { padding: 9px 12px; }
   .cell-name { max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 @media (max-width: 420px) {
