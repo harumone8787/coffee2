@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}新規ユーザー登録 - 在庫管理{% endblock %}
+{% block content %}
+<h1>新規ユーザー登録</h1>
+<form method="post" class="form">
+  <label>ユーザー名</label>
+  <input name="username" required>
+  <label>メールアドレス</label>
+  <input type="email" name="email" required>
+  <label>パスワード</label>
+  <input type="password" name="password" required>
+  <button type="submit">登録する</button>
+</form>
+{% endblock %}

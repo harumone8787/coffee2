@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}商品 - 在庫管理{% endblock %}
+{% block content %}
+<h1>商品</h1>
+
+{% if current_user.is_admin %}
+<form method="post" class="grid-form">
+  <div>
+    <label>商品名</label>
+    <input name="name" required>
+  </div>
+  <div>
+    <label>単位（例：個／本／袋）</label>
+    <input name="unit" required>
+  </div>
+  <div>
+    <label>最低在庫数</label>
+    <input type="number" name="min_stock" value="0" min="0" required>
+  </div>
+  <div>
+    <label>仕入れ先</label>
+    <input name="supplier">
+  </div>
+  <div class="full">
+    <button type="submit" class="button-accent">✅ 登録する</button>
+  </div>
+</form>
+{% else %}
+<div class="form">スタッフは商品登録・編集できません（閲覧のみ）。</div>
+{% endif %}
+
+<h2 class="mt-3">登録済み商品</h2>
+<div class="table-responsive">
+  <table class="table" id="products-table">
+    <thead>
+      <tr>
+        <th>商品名</th>
+        <th>在庫</th>
+        <th>単位</th>
+        <th>最低在庫数</th>
+        <th>仕入れ先</th>
+        <th>登録日</th>
+        {% if current_user.is_admin %}<th>操作</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr id="row-{{ p.id }}">
+        <td>{{ p.name }}</td>
+        <td>{{ p.current_stock }}</td>
+        <td>{{ p.unit }}</td>
+        <td>{{ p.min_stock }}</td>
+        <td>{{ p.supplier or '-' }}</td>
+        <td>{{ p.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        {% if current_user.is_admin %}
+        <td>
+          <a class="button-accent" href="{{ url_for('inventory.product_edit', pid=p.id) }}">✏️ 編集</a>
+          <form method="post" action="{{ url_for('inventory.product_delete', pid=p.id) }}" style="display:inline" onsubmit="return confirm('この商品を非表示にします。履歴は残ります。続行しますか？');">
+            <button type="submit" class="button-danger">🗑️ 削除</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

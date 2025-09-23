@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}在庫管理{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="navbar">
+    <div class="left">
+      <span class="brand">在庫管理</span>
+      <a class="navbtn" href="{{ url_for('inventory.dashboard') }}">📦 在庫一覧</a>
+    </div>
+
+    <!-- PCナビ -->
+    <div class="right nav-desktop">
+      {% if current_user.is_authenticated %}
+        <span class="hello">👤 {{ current_user.username }}</span>
+        <a class="navlink" href="{{ url_for('inventory.products') }}">🧾 商品</a>
+        <a class="navlink" href="{{ url_for('inventory.movements') }}">🔁 入出庫</a>
+        <a class="navlink" href="{{ url_for('auth.change_password') }}">🔑 パスワード変更</a>
+        {% if current_user.is_admin %}
+          <a class="navlink" href="{{ url_for('inventory.admin_users') }}">👥 スタッフ</a>
+        {% endif %}
+        <a class="navlink" href="{{ url_for('auth.logout') }}">🚪 ログアウト</a>
+      {% else %}
+        <a class="navlink" href="{{ url_for('auth.login') }}">ログイン</a>
+      {% endif %}
+    </div>
+
+    <!-- モバイル：ハンバーガー -->
+    <button class="hamburger" aria-label="メニュー" onclick="toggleMenu()">☰</button>
+  </header>
+
+  <!-- モバイルメニュー -->
+  <nav id="mobileMenu" class="mobile-menu">
+    {% if current_user.is_authenticated %}
+      <div class="mob-item">👤 {{ current_user.username }}</div>
+      <a class="mob-link" href="{{ url_for('inventory.dashboard') }}">📦 在庫一覧</a>
+      <a class="mob-link" href="{{ url_for('inventory.products') }}">🧾 商品</a>
+      <a class="mob-link" href="{{ url_for('inventory.movements') }}">🔁 入出庫</a>
+      <a class="mob-link" href="{{ url_for('auth.change_password') }}">🔑 パスワード変更</a>
+      {% if current_user.is_admin %}
+        <a class="mob-link" href="{{ url_for('inventory.admin_users') }}">👥 スタッフ</a>
+      {% endif %}
+      <a class="mob-link" href="{{ url_for('auth.logout') }}">🚪 ログアウト</a>
+    {% else %}
+      <a class="mob-link" href="{{ url_for('auth.login') }}">ログイン</a>
+    {% endif %}
+  </nav>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flashes">
+          {% for category, message in messages %}
+            <li class="flash {{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    function toggleMenu() {
+      const el = document.getElementById('mobileMenu');
+      if (!el) return;
+      el.classList.toggle('open');
+    }
+    // メニュー外クリックで閉じる
+    document.addEventListener('click', function(ev){
+      const menu = document.getElementById('mobileMenu');
+      const btn = document.querySelector('.hamburger');
+      if (!menu || !btn) return;
+      if (!menu.contains(ev.target) && !btn.contains(ev.target)) {
+        menu.classList.remove('open');
+      }
+    });
+  </script>
+</body>
+</html>

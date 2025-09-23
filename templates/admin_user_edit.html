@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}ユーザー編集 - 在庫管理{% endblock %}
+{% block content %}
+<h1>ユーザー編集</h1>
+
+<form method="post" class="grid-form">
+  <div>
+    <label>ユーザー名</label>
+    <input name="username" value="{{ u.username }}" required>
+  </div>
+  <div>
+    <label>メール</label>
+    <input type="email" name="email" value="{{ u.email }}" required>
+  </div>
+  <div>
+    <label>権限</label>
+    <input type="checkbox" name="is_admin" {% if u.is_admin %}checked{% endif %}> 管理者
+  </div>
+  <div>
+    <label>状態</label>
+    <input type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %}> 有効
+  </div>
+  <div class="full">
+    <button type="submit" class="button-accent">💾 更新する</button>
+    <a href="{{ url_for('inventory.admin_users') }}" class="button-secondary" style="margin-left:8px;">↩️ 戻る</a>
+  </div>
+</form>
+{% endblock %}

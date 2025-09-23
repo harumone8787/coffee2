@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}商品編集 - 在庫管理{% endblock %}
+{% block content %}
+<h1>商品編集</h1>
+
+<form method="post" class="grid-form">
+  <div>
+    <label>商品名</label>
+    <input name="name" value="{{ p.name }}" required>
+  </div>
+  <div>
+    <label>単位</label>
+    <input name="unit" value="{{ p.unit }}" required>
+  </div>
+  <div>
+    <label>最低在庫数</label>
+    <input type="number" name="min_stock" value="{{ p.min_stock }}" min="0" required>
+  </div>
+  <div>
+    <label>仕入れ先</label>
+    <input name="supplier" value="{{ p.supplier }}">
+  </div>
+  <div class="full">
+    <button type="submit" class="button-accent">💾 更新する</button>
+    <a href="{{ url_for('inventory.products') }}" class="button-secondary" style="margin-left:8px;">↩️ 一覧へ戻る</a>
+  </div>
+</form>
+
+{% if current_user.is_admin %}
+<form method="post" action="{{ url_for('inventory.product_delete', pid=p.id) }}" style="margin-top:12px;"
+      onsubmit="return confirm('この商品を非表示にします。履歴は残ります。続行しますか？');">
+  <button type="submit" class="button-danger">🗑️ 削除</button>
+</form>
+{% endif %}
+{% endblock %}

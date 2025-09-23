@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}パスワード再設定 - 在庫管理{% endblock %}
+{% block content %}
+<h1>パスワード再設定</h1>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <form method="post" class="grid-form">
+      <div class="full">
+        <label>登録しているメールアドレスを入力してください</label>
+        <input type="email" name="email" placeholder="you@example.com" required>
+      </div>
+      <div class="full auth-actions">
+        <button type="submit" class="button-accent">📧 リンクを送信</button>
+        <a href="{{ url_for('auth.login') }}" class="button-secondary">↩️ ログイン画面に戻る</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

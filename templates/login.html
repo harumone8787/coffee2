@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}ログイン - 在庫管理{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h1>ログイン</h1>
+    <form method="post" class="grid-form">
+      <div class="full">
+        <label>ユーザー名 または メール</label>
+        <input name="username" placeholder="admin または admin@example.com" required>
+      </div>
+      <div class="full">
+        <label>パスワード</label>
+        <input type="password" name="password" placeholder="••••••••" required>
+      </div>
+      <div class="full auth-actions">
+        <button type="submit" class="button-accent">🚀 ログイン</button>
+        <a href="{{ url_for('auth.request_reset') }}">パスワードをお忘れですか？</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
