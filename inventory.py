@@ -16,12 +16,6 @@ def ensure_columns(db_):
     本番は Postgres 想定。マイグレーション未導入のため、必要になれば
     ALTER TABLE をここで行う。現状は新規作成想定なので no-op。
     """
-    # 例：古いスキーマからの移行が必要になったら下記のように追加
-    # with db_.engine.begin() as conn:
-    #     try:
-    #         conn.execute(text("SELECT movement_type FROM movement LIMIT 1"))
-    #     except Exception:
-    #         conn.execute(text("ALTER TABLE movement ADD COLUMN movement_type VARCHAR(8) NOT NULL DEFAULT 'in'"))
     return
 
 
@@ -246,6 +240,47 @@ def admin_users():
 
     users = User.query.order_by(User.created_at.desc()).all()
     return render_template("admin_users.html", users=users)
+
+
+@inventory_bp.route("/admin/users/add", methods=["GET", "POST"])
+@login_required
+def admin_user_add():
+    if not current_user.is_admin:
+        flash("管理者のみアクセス可能です。", "warning")
+        return redirect(url_for("inventory.dashboard"))
+
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+        is_admin = True if request.form.get("is_admin") == "on" else False
+
+        if not username or not email or not password:
+            flash("ユーザー名・メール・パスワードは必須です。", "danger")
+            return redirect(url_for("inventory.admin_user_add"))
+
+        # 重複チェック
+        if User.query.filter_by(username=username).first():
+            flash("そのユーザー名は既に存在します。", "danger")
+            return redirect(url_for("inventory.admin_user_add"))
+        if User.query.filter_by(email=email).first():
+            flash("そのメールアドレスは既に登録済みです。", "danger")
+            return redirect(url_for("inventory.admin_user_add"))
+
+        try:
+            u = User(username=username, email=email, is_admin=is_admin)
+            u.set_password(password)
+            db.session.add(u)
+            db.session.commit()
+            flash("スタッフを追加しました。", "success")
+            return redirect(url_for("inventory.admin_users"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"追加に失敗しました: {e}", "danger")
+            return redirect(url_for("inventory.admin_user_add"))
+
+    # GET
+    return render_template("admin_user_add.html")
 
 
 @inventory_bp.route("/admin/users/<int:uid>/edit", methods=["GET", "POST"])

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h2>スタッフの追加</h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flashes">
+        {% for category, message in messages %}
+          <li class="flash {{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <form class="form grid-form" method="post" action="{{ url_for('inventory.admin_user_add') }}">
+    <div>
+      <label>ユーザー名</label>
+      <input type="text" name="username" placeholder="yamada" required>
+    </div>
+    <div>
+      <label>メールアドレス</label>
+      <input type="email" name="email" placeholder="user@example.com" required>
+    </div>
+    <div class="full">
+      <label>パスワード</label>
+      <input type="password" name="password" placeholder="初期パスワード" required>
+    </div>
+    <div class="full">
+      <label><input type="checkbox" name="is_admin"> 管理者にする</label>
+    </div>
+
+    <div class="toolbar">
+      <button class="button-secondary" type="submit">スタッフを追加</button>
+      <a class="navlink" href="{{ url_for('inventory.admin_users') }}">戻る</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
