@@ -1,8 +1,8 @@
 # inventory.py
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
-from sqlalchemy import func, case, text
+from sqlalchemy import func, case
 from sqlalchemy.orm import selectinload
 
 from extensions import db
@@ -10,16 +10,9 @@ from models import User, Product, Movement
 
 inventory_bp = Blueprint("inventory", __name__)
 
-# --- Postgres/SQLite どちらでも安全に起動できるように、ここでは no-op または将来拡張用 ---
 def ensure_columns(db_):
-    """
-    本番は Postgres 想定。マイグレーション未導入のため、必要になれば
-    ALTER TABLE をここで行う。現状は新規作成想定なので no-op。
-    """
     return
 
-
-# デフォルト管理者を作成
 def ensure_admin(app):
     with app.app_context():
         if not User.query.filter_by(username="admin").first():
@@ -31,22 +24,15 @@ def ensure_admin(app):
         else:
             app.logger.info("[INIT] admin already exists")
 
-
-# ====== ページ ======
-
 @inventory_bp.route("/dashboard")
 @login_required
 def dashboard():
-    # 検索フィルタ（商品名）
     q = request.args.get("q", "").strip()
     product_query = Product.query
     if q:
         product_query = product_query.filter(Product.name.ilike(f"%{q}%"))
-
     products = product_query.order_by(Product.name.asc()).all()
 
-    # 在庫数 = 入庫 - 出庫（Movement 集計）
-    # quantity は常に正の数、movement_type が 'in' なら +、'out' なら - として集計
     agg = (
         db.session.query(
             Product.id.label("pid"),
@@ -67,7 +53,6 @@ def dashboard():
     )
     qty_map = {row.pid: int(row.qty or 0) for row in agg}
 
-    # 最新10件（関連は事前ロード）
     recent_movements = (
         Movement.query.options(
             selectinload(Movement.product),
@@ -85,9 +70,6 @@ def dashboard():
         recent_movements=recent_movements,
         filter_products=q,
     )
-
-
-# ========== 商品 ==========
 
 @inventory_bp.route("/products", methods=["GET", "POST"])
 @login_required
@@ -124,7 +106,6 @@ def products():
     items = Product.query.order_by(Product.created_at.desc()).all()
     return render_template("products.html", products=items)
 
-
 @inventory_bp.route("/product/<int:pid>/edit", methods=["GET", "POST"])
 @login_required
 def product_edit(pid):
@@ -156,7 +137,6 @@ def product_edit(pid):
 
     return render_template("product_edit.html", p=p)
 
-
 @inventory_bp.route("/product/<int:pid>/delete", methods=["POST"])
 @login_required
 def product_delete(pid):
@@ -174,33 +154,53 @@ def product_delete(pid):
         flash(f"削除に失敗しました: {e}", "danger")
     return redirect(url_for("inventory.products"))
 
-
-# ========== 入出庫 ==========
-
 @inventory_bp.route("/movements", methods=["GET", "POST"])
 @login_required
 def movements():
     if request.method == "POST":
-        product_id = request.form.get("product_id")
-        movement_type = request.form.get("movement_type")  # 'in' or 'out'
-        quantity = request.form.get("quantity")
+        # 受け取った値をログに出して原因特定しやすくする
+        raw_product_id = request.form.get("product_id")
+        raw_mtype = request.form.get("movement_type")
+        raw_qty = request.form.get("quantity")
         note = request.form.get("note", "").strip()
 
-        if not product_id or not movement_type or not quantity:
-            flash("必要項目が不足しています。", "danger")
-            return redirect(url_for("inventory.movements"))
+        current_app.logger.info(
+            f"[POST /movements] product_id={raw_product_id}, movement_type={raw_mtype}, quantity={raw_qty}, note={note}"
+        )
 
-        if movement_type not in ("in", "out"):
-            flash("区分は 'in' または 'out' を指定してください。", "danger")
-            return redirect(url_for("inventory.movements"))
-
+        # 空チェック & 形式チェック
+        errors = []
+        # product_id
         try:
-            qty = int(quantity)
-            if qty <= 0:
-                raise ValueError("数量は正の整数で入力してください。")
+            product_id = int(raw_product_id) if raw_product_id is not None else 0
+            if product_id <= 0:
+                errors.append("商品が選択されていません。")
+        except Exception:
+            errors.append("商品IDが不正です。")
 
+        # movement_type
+        movement_type = (raw_mtype or "").strip().lower()
+        if movement_type not in ("in", "out"):
+            errors.append("区分は「入庫(in) / 出庫(out)」から選択してください。")
+
+        # quantity
+        try:
+            qty = int(raw_qty) if raw_qty is not None else 0
+            if qty <= 0:
+                errors.append("数量は1以上の整数で入力してください。")
+        except Exception:
+            errors.append("数量は整数で入力してください。")
+
+        if errors:
+            for m in errors:
+                flash(m, "danger")
+            # ここで早期リダイレクト
+            return redirect(url_for("inventory.movements"))
+
+        # 正常処理
+        try:
             mv = Movement(
-                product_id=int(product_id),
+                product_id=product_id,
                 movement_type=movement_type,
                 quantity=qty,
                 note=note or None,
@@ -212,11 +212,13 @@ def movements():
             flash("入出庫を記録しました。", "success")
         except Exception as e:
             db.session.rollback()
+            current_app.logger.exception("[POST /movements] DB error")
             flash(f"記録に失敗しました: {e}", "danger")
+
         return redirect(url_for("inventory.movements"))
 
+    # GET
     items = Product.query.order_by(Product.name.asc()).all()
-
     logs = (
         Movement.query.options(
             selectinload(Movement.product),
@@ -228,9 +230,6 @@ def movements():
     )
     return render_template("movements.html", products=items, movements=logs)
 
-
-# ========== スタッフ管理 ==========
-
 @inventory_bp.route("/admin/users")
 @login_required
 def admin_users():
@@ -240,7 +239,6 @@ def admin_users():
 
     users = User.query.order_by(User.created_at.desc()).all()
     return render_template("admin_users.html", users=users)
-
 
 @inventory_bp.route("/admin/users/add", methods=["GET", "POST"])
 @login_required
@@ -259,7 +257,6 @@ def admin_user_add():
             flash("ユーザー名・メール・パスワードは必須です。", "danger")
             return redirect(url_for("inventory.admin_user_add"))
 
-        # 重複チェック
         if User.query.filter_by(username=username).first():
             flash("そのユーザー名は既に存在します。", "danger")
             return redirect(url_for("inventory.admin_user_add"))
@@ -279,9 +276,7 @@ def admin_user_add():
             flash(f"追加に失敗しました: {e}", "danger")
             return redirect(url_for("inventory.admin_user_add"))
 
-    # GET
     return render_template("admin_user_add.html")
-
 
 @inventory_bp.route("/admin/users/<int:uid>/edit", methods=["GET", "POST"])
 @login_required
@@ -310,7 +305,6 @@ def admin_user_edit(uid):
             flash(f"更新に失敗しました: {e}", "danger")
 
     return render_template("admin_user_edit.html", u=u)
-
 
 @inventory_bp.route("/admin/users/<int:uid>/delete", methods=["POST"])
 @login_required

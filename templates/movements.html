@@ -1,76 +1,86 @@
 {% extends 'base.html' %}
-{% block title %}入出庫 - 在庫管理{% endblock %}
 {% block content %}
-<h1>入出庫（消費登録）</h1>
+<div class="container">
+  <h2>入出庫</h2>
 
-<form method="post" class="grid-form">
-  <div>
-    <label>商品</label>
-    <select name="product_id" required>
-      {% for p in products %}
-        <option value="{{ p.id }}">{{ p.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div>
-    <label>区分</label>
-    <select name="kind" required>
-      <option value="IN">入庫</option>
-      <option value="OUT">出庫</option>
-    </select>
-  </div>
-  <div>
-    <label>数量</label>
-    <input type="number" name="qty" min="1" value="1" required>
-  </div>
-  <div>
-    <label>メモ</label>
-    <input name="note" placeholder="任意">
-  </div>
-  <div class="full">
-    <button type="submit" class="button-accent">📝 記録する</button>
-  </div>
-</form>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flashes">
+        {% for category, message in messages %}
+          <li class="flash {{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
 
-<h2 class="mt-3">最近の履歴（50件）</h2>
-<div class="table-responsive">
-  <table class="table">
-    <thead>
-      <tr><th>日時</th><th>商品</th><th>区分</th><th>数量</th><th>担当</th><th>メモ</th></tr>
-    </thead>
-    <tbody>
-      {% for m in recent %}
-      <tr>
-        <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-        <td>{{ m.product.name }}</td>
-        <td>
-          {% if m.kind == 'IN' %}
-            <span class="icon icon-in">⬆️ 入庫</span>
-          {% else %}
-            <span class="icon icon-out">⬇️ 出庫</span>
-          {% endif %}
-        </td>
-        <td>{{ m.qty }}</td>
-        <td>
-          {% if m.user.is_admin %}
-            <span class="icon icon-admin" title="管理者">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 14a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"/>
-              </svg>
-            </span>
-          {% else %}
-            <span class="icon icon-staff" title="スタッフ">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 14a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"/>
-              </svg>
-            </span>
-          {% endif %}
-          <span style="margin-left:6px">{{ m.user.username }}</span>
-        </td>
-        <td>{{ m.note or '' }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <form class="form grid-form" method="post" action="{{ url_for('inventory.movements') }}">
+    <div class="full">
+      <label>商品</label>
+      <select name="product_id" required>
+        <option value="">-- 選択してください --</option>
+        {% for p in products %}
+          <option value="{{ p.id }}">{{ p.name }} (最小在庫: {{ p.min_stock }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label>区分</label>
+      <select name="movement_type" required>
+        <option value="">-- 選択 --</option>
+        <option value="in">入庫</option>
+        <option value="out">出庫</option>
+      </select>
+    </div>
+
+    <div>
+      <label>数量</label>
+      <input type="number" name="quantity" min="1" step="1" placeholder="例: 10" required>
+    </div>
+
+    <div class="full">
+      <label>メモ（任意）</label>
+      <input type="text" name="note" placeholder="伝票番号など">
+    </div>
+
+    <div class="toolbar">
+      <button class="button-secondary" type="submit">記録する</button>
+      <a class="navlink" href="{{ url_for('inventory.dashboard') }}">在庫一覧へ</a>
+    </div>
+  </form>
+
+  <h3 class="mt-3">最近の入出庫（最新50件）</h3>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>日時</th>
+          <th>商品</th>
+          <th>区分</th>
+          <th>数量</th>
+          <th>担当</th>
+          <th>メモ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movements %}
+        <tr>
+          <td>{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>{{ m.product.name }}</td>
+          <td>
+            {% if m.movement_type == 'in' %}
+              <span class="badge badge-green">入庫</span>
+            {% else %}
+              <span class="badge badge-red">出庫</span>
+            {% endif %}
+          </td>
+          <td>{{ m.quantity }}</td>
+          <td>{{ m.user.username if m.user else '-' }}</td>
+          <td>{{ m.note or '' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
