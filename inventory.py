@@ -2,7 +2,7 @@
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 from sqlalchemy.orm import selectinload
 
 from extensions import db
@@ -10,9 +10,11 @@ from models import User, Product, Movement
 
 inventory_bp = Blueprint("inventory", __name__)
 
+# --- Postgres/SQLite どちらでも安全に起動できるように、ここでは no-op ---
 def ensure_columns(db_):
     return
 
+# デフォルト管理者を作成
 def ensure_admin(app):
     with app.app_context():
         if not User.query.filter_by(username="admin").first():
@@ -24,15 +26,29 @@ def ensure_admin(app):
         else:
             app.logger.info("[INIT] admin already exists")
 
+
+# ====== 在庫一覧（ダッシュボード） ======
 @inventory_bp.route("/dashboard")
 @login_required
 def dashboard():
+    # --- クエリパラメータ（テンプレが期待する名前） ---
     q = request.args.get("q", "").strip()
+    kind = (request.args.get("kind") or "").upper()  # '', 'IN', 'OUT'
+    prod_selected_raw = request.args.get("prod", "").strip()
+    prod_selected = None
+    if prod_selected_raw.isdigit():
+        prod_selected = int(prod_selected_raw)
+
+    # --- 商品一覧（表の左側）: 商品名 or 仕入れ先 でフィルタ ---
     product_query = Product.query
     if q:
-        product_query = product_query.filter(Product.name.ilike(f"%{q}%"))
+        like = f"%{q}%"
+        product_query = product_query.filter(
+            or_(Product.name.ilike(like), Product.supplier.ilike(like))
+        )
     products = product_query.order_by(Product.name.asc()).all()
 
+    # --- 在庫集計 qty_map[product_id] = 入庫合計 - 出庫合計 ---
     agg = (
         db.session.query(
             Product.id.label("pid"),
@@ -53,24 +69,48 @@ def dashboard():
     )
     qty_map = {row.pid: int(row.qty or 0) for row in agg}
 
-    recent_movements = (
+    # --- 履歴候補（最新から）: optional フィルタ kind/prod/q で絞り込み、上位10件 ---
+    mv_q = (
         Movement.query.options(
             selectinload(Movement.product),
             selectinload(Movement.user),
         )
         .order_by(Movement.created_at.desc())
-        .limit(10)
-        .all()
     )
+
+    if kind in ("IN", "OUT"):
+        mv_q = mv_q.filter(Movement.movement_type == ("in" if kind == "IN" else "out"))
+
+    if prod_selected:
+        mv_q = mv_q.filter(Movement.product_id == prod_selected)
+
+    # 「q」が指定されているとき、履歴側も商品名 or 仕入れ先にかかるように（任意）
+    if q:
+        like = f"%{q}%"
+        mv_q = mv_q.join(Product, Movement.product_id == Product.id).filter(
+            or_(Product.name.ilike(like), Product.supplier.ilike(like))
+        )
+
+    recent10 = mv_q.limit(10).all()
+
+    # 履歴フィルタ用の「商品セレクト」候補（全部）
+    filter_products = Product.query.order_by(Product.name.asc()).all()
 
     return render_template(
         "dashboard.html",
+        # テンプレが期待する変数
+        q=q,
+        kind=kind,
+        filter_products=filter_products,
+        prod_selected=prod_selected,
+        recent10=recent10,
+        # 表示用
         products=products,
         qty_map=qty_map,
-        recent_movements=recent_movements,
-        filter_products=q,
     )
 
+
+# ====== 商品 ======
 @inventory_bp.route("/products", methods=["GET", "POST"])
 @login_required
 def products():
@@ -106,6 +146,7 @@ def products():
     items = Product.query.order_by(Product.created_at.desc()).all()
     return render_template("products.html", products=items)
 
+
 @inventory_bp.route("/product/<int:pid>/edit", methods=["GET", "POST"])
 @login_required
 def product_edit(pid):
@@ -137,6 +178,7 @@ def product_edit(pid):
 
     return render_template("product_edit.html", p=p)
 
+
 @inventory_bp.route("/product/<int:pid>/delete", methods=["POST"])
 @login_required
 def product_delete(pid):
@@ -154,11 +196,12 @@ def product_delete(pid):
         flash(f"削除に失敗しました: {e}", "danger")
     return redirect(url_for("inventory.products"))
 
+
+# ====== 入出庫 ======
 @inventory_bp.route("/movements", methods=["GET", "POST"])
 @login_required
 def movements():
     if request.method == "POST":
-        # 受け取った値をログに出して原因特定しやすくする
         raw_product_id = request.form.get("product_id")
         raw_mtype = request.form.get("movement_type")
         raw_qty = request.form.get("quantity")
@@ -168,9 +211,7 @@ def movements():
             f"[POST /movements] product_id={raw_product_id}, movement_type={raw_mtype}, quantity={raw_qty}, note={note}"
         )
 
-        # 空チェック & 形式チェック
         errors = []
-        # product_id
         try:
             product_id = int(raw_product_id) if raw_product_id is not None else 0
             if product_id <= 0:
@@ -178,12 +219,10 @@ def movements():
         except Exception:
             errors.append("商品IDが不正です。")
 
-        # movement_type
         movement_type = (raw_mtype or "").strip().lower()
         if movement_type not in ("in", "out"):
             errors.append("区分は「入庫(in) / 出庫(out)」から選択してください。")
 
-        # quantity
         try:
             qty = int(raw_qty) if raw_qty is not None else 0
             if qty <= 0:
@@ -194,10 +233,8 @@ def movements():
         if errors:
             for m in errors:
                 flash(m, "danger")
-            # ここで早期リダイレクト
             return redirect(url_for("inventory.movements"))
 
-        # 正常処理
         try:
             mv = Movement(
                 product_id=product_id,
@@ -217,7 +254,6 @@ def movements():
 
         return redirect(url_for("inventory.movements"))
 
-    # GET
     items = Product.query.order_by(Product.name.asc()).all()
     logs = (
         Movement.query.options(
@@ -230,6 +266,8 @@ def movements():
     )
     return render_template("movements.html", products=items, movements=logs)
 
+
+# ====== スタッフ管理 ======
 @inventory_bp.route("/admin/users")
 @login_required
 def admin_users():
@@ -239,6 +277,7 @@ def admin_users():
 
     users = User.query.order_by(User.created_at.desc()).all()
     return render_template("admin_users.html", users=users)
+
 
 @inventory_bp.route("/admin/users/add", methods=["GET", "POST"])
 @login_required
@@ -278,6 +317,7 @@ def admin_user_add():
 
     return render_template("admin_user_add.html")
 
+
 @inventory_bp.route("/admin/users/<int:uid>/edit", methods=["GET", "POST"])
 @login_required
 def admin_user_edit(uid):
@@ -305,6 +345,7 @@ def admin_user_edit(uid):
             flash(f"更新に失敗しました: {e}", "danger")
 
     return render_template("admin_user_edit.html", u=u)
+
 
 @inventory_bp.route("/admin/users/<int:uid>/delete", methods=["POST"])
 @login_required
