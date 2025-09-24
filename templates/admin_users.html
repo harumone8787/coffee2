@@ -1,85 +1,63 @@
 {% extends 'base.html' %}
-{% block title %}スタッフ追加・管理 - 在庫管理{% endblock %}
 {% block content %}
-<h1>スタッフ追加（管理者のみ）</h1>
+<div class="container">
+  <h2>スタッフ管理</h2>
 
-<form method="post" class="grid-form">
-  <div>
-    <label>ユーザー名</label>
-    <input name="username" required>
+  <div class="toolbar">
+    <a class="button-secondary" href="{{ url_for('inventory.admin_user_add') }}">スタッフを追加</a>
+    <a class="navlink" href="{{ url_for('inventory.dashboard') }}">在庫一覧へ</a>
   </div>
-  <div>
-    <label>メール</label>
-    <input type="email" name="email" required>
-  </div>
-  <div>
-    <label>パスワード</label>
-    <input type="password" name="password" required>
-  </div>
-  <div class="full">
-    <button type="submit" class="button-secondary">追加する</button>
-  </div>
-</form>
 
-<h2 class="mt-3">ユーザー一覧</h2>
-<div class="table-responsive">
-  <table class="table">
-    <thead>
-      <tr>
-        <th>ユーザー</th>
-        <th>メール</th>
-        <th>権限</th>
-        <th>状態</th>
-        <th>登録日</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flashes">
+        {% for category, message in messages %}
+          <li class="flash {{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>ユーザー名</th>
+          <th>メール</th>
+          <th>権限</th>
+          <th>作成日</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
       {% for u in users %}
-      <tr>
-        <td>
-          {% if u.is_admin %}
-            <span class="icon icon-admin" title="管理者">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 14a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"/>
-              </svg>
-            </span>
-          {% else %}
-            <span class="icon icon-staff" title="スタッフ">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 14a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"/>
-              </svg>
-            </span>
-          {% endif %}
-          <span style="margin-left:6px">{{ u.username }}</span>
-        </td>
-        <td>{{ u.email }}</td>
-        <td>
-          {% if u.is_admin %}
-            <span class="badge badge-blue">管理者</span>
-          {% else %}
-            <span class="badge badge-gray">スタッフ</span>
-          {% endif %}
-        </td>
-        <td>
-          {% if u.is_active %}
-            <span class="badge badge-green">有効</span>
-          {% else %}
-            <span class="badge badge-red">停止</span>
-          {% endif %}
-        </td>
-        <td>{{ u.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-        <td>
-          <a class="button-accent" href="{{ url_for('inventory.admin_user_edit', uid=u.id) }}">編集</a>
-          {% if u.id != current_user.id %}
-          <form method="post" action="{{ url_for('inventory.admin_user_delete', uid=u.id) }}" style="display:inline" onsubmit="return confirm('このユーザーを停止しますか？（履歴は維持されます）');">
-            <button type="submit" class="button">削除(停止)</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
+        <tr>
+          <td>{{ u.id }}</td>
+          <td>{{ u.username }}</td>
+          <td>{{ u.email }}</td>
+          <td>
+            {% if u.is_admin %}
+              <span class="badge badge-green">管理者</span>
+            {% else %}
+              <span class="badge badge-blue">スタッフ</span>
+            {% endif %}
+          </td>
+          <td>{{ u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '-' }}</td>
+          <td>
+            <a class="button-accent" href="{{ url_for('inventory.admin_user_edit', uid=u.id) }}">編集</a>
+            {% if u.id != current_user.id %}
+            <form style="display:inline" method="post" action="{{ url_for('inventory.admin_user_delete', uid=u.id) }}" onsubmit="return confirm('削除しますか？この操作は元に戻せません。');">
+              <button class="button" type="submit">削除</button>
+            </form>
+            {% else %}
+              <span class="badge badge-gray">（自分は削除不可）</span>
+            {% endif %}
+          </td>
+        </tr>
       {% endfor %}
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
