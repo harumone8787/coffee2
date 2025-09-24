@@ -37,7 +37,7 @@
   <a class="button-secondary" href="{{ url_for('inventory.movements') }}">🔁 入出庫（消費登録）</a>
 </div>
 
-<!-- 在庫表 -->
+<!-- 在庫表（PCもスマホも従来どおりテーブル） -->
 <div class="table-responsive">
   <table class="table">
     <thead>
@@ -62,7 +62,7 @@
   </table>
 </div>
 
-<!-- 最新の履歴 -->
+<!-- 最新の履歴（PC＝テーブル、スマホ＝カード） -->
 <h2 class="mt-3">🕒 最新の履歴（10件）</h2>
 
 <!-- PC/タブレット用：従来のテーブル -->
@@ -113,7 +113,7 @@
   </table>
 </div>
 
-<!-- スマホ用：カード表示（見やすいレイアウト） -->
+<!-- スマホ用：カード表示（PCでは非表示） -->
 <div class="recent-cards">
   {% for m in recent10 %}
   <div class="recent-card">

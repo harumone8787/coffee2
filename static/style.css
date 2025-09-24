@@ -134,8 +134,8 @@ tr.low { background: rgba(239, 68, 68, 0.08); }
 .flash.danger { background: #4d0b0b; }
 
 /* ======= 最新履歴（スマホでカード表示） ======= */
-.recent-table { /* PC/タブレットで使用 */ }
-.recent-cards { display:none; }
+.recent-table { display:block; }      /* ← PCは従来テーブルを常に表示 */
+.recent-cards { display:none; }       /* ← PCではカード非表示 */
 
 .recent-card {
   background: var(--card);
@@ -185,10 +185,10 @@ tr.low { background: rgba(239, 68, 68, 0.08); }
   .button, .button-accent, .button-secondary { padding: 9px 12px; }
   .cell-name { max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
-/* スマホ幅で履歴はカードへ切り替え */
+/* スマホ幅で履歴はカードへ切り替え（PCはそのまま） */
 @media (max-width: 700px) {
-  .recent-table { display:none; }
-  .recent-cards { display:grid; gap: 12px; }
+  .recent-table { display:none; }   /* ← スマホのみテーブル非表示 */
+  .recent-cards { display:grid; gap: 12px; }  /* ← スマホのみカード表示 */
 }
 @media (max-width: 420px) {
   .hello { display:none; }
