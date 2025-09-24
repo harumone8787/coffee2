@@ -193,3 +193,30 @@ tr.low { background: rgba(239, 68, 68, 0.08); }
 @media (max-width: 420px) {
   .hello { display:none; }
 }
+/* === ここから追記（PCの担当アイコン小型化＆色のコントラスト強化） === */
+
+/* 管理者＝ゴールド寄りに、スタッフ＝水色寄りにして差を大きく */
+.icon-admin { color: #fbbf24 !important; }  /* 以前: #eab308 より明るめで視認性UP */
+.icon-staff { color: #60a5fa !important; }  /* 以前: #3b82f6 より水色寄りで差別化 */
+
+/* PCテーブル内の担当アイコン（SVG）を小さくして行間に馴染ませる */
+.table td svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  vertical-align: middle;   /* テキストと高さを揃える */
+  margin-right: 2px;        /* ユーザー名との余白を少し */
+}
+
+/* スマホカード内は少しだけ大きく（見やすさ優先） */
+.recent-card .user svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* 区分バッジも色差を強めたい場合は有効化（必要に応じて） */
+/*
+.badge-green { background: rgba(16,185,129,0.22); color: #86efac; border-color: rgba(16,185,129,0.45); }
+.badge-red   { background: rgba(239,68,68,0.22);  color: #fecaca; border-color: rgba(239,68,68,0.45); }
+*/
