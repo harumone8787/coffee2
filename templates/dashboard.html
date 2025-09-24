@@ -37,6 +37,7 @@
   <a class="button-secondary" href="{{ url_for('inventory.movements') }}">🔁 入出庫（消費登録）</a>
 </div>
 
+<!-- 在庫表 -->
 <div class="table-responsive">
   <table class="table">
     <thead>
@@ -61,8 +62,11 @@
   </table>
 </div>
 
+<!-- 最新の履歴 -->
 <h2 class="mt-3">🕒 最新の履歴（10件）</h2>
-<div class="table-responsive">
+
+<!-- PC/タブレット用：従来のテーブル -->
+<div class="table-responsive recent-table">
   <table class="table">
     <thead>
       <tr><th>日時</th><th>商品</th><th>区分</th><th>数量</th><th>担当</th><th>メモ</th></tr>
@@ -74,12 +78,12 @@
         <td>📦 {{ m.product.name if m.product else '-' }}</td>
         <td>
           {% if m.movement_type == 'in' %}
-            <span class="icon icon-in">⬆️ 入庫</span>
+            <span class="badge badge-green">入庫</span>
           {% else %}
-            <span class="icon icon-out">⬇️ 出庫</span>
+            <span class="badge badge-red">出庫</span>
           {% endif %}
         </td>
-        <td>{{ m.quantity }}</td>
+        <td class="qty-col">{{ m.quantity }}</td>
         <td>
           {% if m.user and m.user.is_admin %}
             <span class="icon icon-admin" title="管理者">
@@ -108,4 +112,57 @@
     </tbody>
   </table>
 </div>
+
+<!-- スマホ用：カード表示（見やすいレイアウト） -->
+<div class="recent-cards">
+  {% for m in recent10 %}
+  <div class="recent-card">
+    <div class="row-top">
+      <div class="prod">📦 {{ m.product.name if m.product else '-' }}</div>
+      <div class="time">{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+    </div>
+    <div class="row-mid">
+      <div class="kind">
+        {% if m.movement_type == 'in' %}
+          <span class="badge badge-green">入庫</span>
+        {% else %}
+          <span class="badge badge-red">出庫</span>
+        {% endif %}
+      </div>
+      <div class="qty-pill">
+        <span class="qty-num">{{ m.quantity }}</span>
+        <span class="qty-label">数量</span>
+      </div>
+    </div>
+    <div class="row-bottom">
+      <div class="user">
+        {% if m.user and m.user.is_admin %}
+          <span class="icon icon-admin" title="管理者">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 14a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"/>
+            </svg>
+          </span>
+          <span class="username">{{ m.user.username }}</span>
+        {% elif m.user %}
+          <span class="icon icon-staff" title="スタッフ">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 14a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z"/>
+            </svg>
+          </span>
+          <span class="username">{{ m.user.username }}</span>
+        {% else %}
+          <span class="username">-</span>
+        {% endif %}
+      </div>
+      {% if m.note %}
+        <div class="note">📝 {{ m.note }}</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  {% if not recent10 %}
+    <div class="recent-card empty">履歴がありません。</div>
+  {% endif %}
+</div>
+
 {% endblock %}
